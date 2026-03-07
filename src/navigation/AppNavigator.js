@@ -1,6 +1,7 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Text } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import SquadScreen from '../screens/SquadScreen';
 import TournamentScreen from '../screens/TournamentScreen';
@@ -8,7 +9,7 @@ import { COLORS } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 
-const AppNavigator = () => {
+function AppNavigator() {
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -55,6 +56,6 @@ const AppNavigator = () => {
       </Tab.Navigator>
     </NavigationContainer>
   );
-};
+}
 
 export default AppNavigator;
