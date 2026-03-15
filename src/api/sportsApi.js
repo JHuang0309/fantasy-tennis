@@ -1,6 +1,11 @@
 import { SPORTS_API_BASE_URL, SPORTS_API_KEY } from '@env';
 import axios from 'axios';
 
+// Debug: Check if environment variables are loaded
+console.log('🔍 API Configuration:');
+console.log('  Base URL:', SPORTS_API_BASE_URL || '❌ NOT LOADED');
+console.log('  API Key:', SPORTS_API_KEY ? `✅ Loaded (${SPORTS_API_KEY.substring(0, 10)}...)` : '❌ NOT LOADED');
+
 const api = axios.create({
   baseURL: SPORTS_API_BASE_URL,
   headers: {
