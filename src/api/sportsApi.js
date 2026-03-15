@@ -17,9 +17,10 @@ const api = axios.create({
 // Get top ATP players with rankings
 export const getTopPlayers = async (gender = 'male') => {
   try {
-    // V2 API: /api/rankings returns WTA by default, we need to check which is ATP
-    // For now, let's try both and see which works
-    const endpoint = gender === 'female' ? '/api/rankings/wta' : '/api/rankings';
+    // IMPORTANT: The V2 API has SWAPPED endpoints!
+    // /api/rankings = WTA (women)
+    // /api/rankings/wta = ATP (men)
+    const endpoint = gender === 'female' ? '/api/rankings' : '/api/rankings/wta';
     const response = await api.get(endpoint);
 
     console.log('✅ API Response received');
@@ -144,7 +145,10 @@ export const getTournaments = async () => {
 // Get ATP rankings (same as getTopPlayers)
 export const getRankings = async (gender = 'male') => {
   try {
-    const endpoint = gender === 'female' ? '/api/rankings/wta' : '/api/rankings';
+    // IMPORTANT: The V2 API has SWAPPED endpoints!
+    // /api/rankings = WTA (women)
+    // /api/rankings/wta = ATP (men)
+    const endpoint = gender === 'female' ? '/api/rankings' : '/api/rankings/wta';
     const response = await api.get(endpoint);
     return response.data;
   } catch (error) {
