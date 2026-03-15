@@ -17,12 +17,52 @@ const api = axios.create({
 // Get top ATP players with rankings
 export const getTopPlayers = async (gender = 'male') => {
   try {
-    // V2 API uses /api/rankings for ATP Singles, /api/rankings/wta for WTA
+    // V2 API: /api/rankings returns WTA by default, we need to check which is ATP
+    // For now, let's try both and see which works
     const endpoint = gender === 'female' ? '/api/rankings/wta' : '/api/rankings';
     const response = await api.get(endpoint);
-    return response.data;
+
+    console.log('✅ API Response received');
+    console.log('  Endpoint:', endpoint);
+    console.log('  Top-level keys:', Object.keys(response.data).join(', '));
+
+    // V2 API structure: { success: true, data: { rankings: [...] } }
+    if (!response.data.data || !response.data.data.rankings) {
+      console.error('❌ Unexpected API structure:', response.data);
+      return [];
+    }
+
+    const rankingsArray = response.data.data.rankings;
+    console.log(`  Found ${rankingsArray.length} players`);
+    console.log(`  First player: ${rankingsArray[0]?.team?.name} (Gender: ${rankingsArray[0]?.team?.gender})`);
+
+    // Transform API data to app format
+    const players = rankingsArray
+      .filter(apiPlayer => {
+        // Filter by gender if specified
+        const playerGender = apiPlayer.team?.gender;
+        if (gender === 'male' && playerGender !== 'M') return false;
+        if (gender === 'female' && playerGender !== 'F') return false;
+        return true;
+      })
+      .map(apiPlayer => ({
+        id: apiPlayer.team?.id,
+        name: apiPlayer.team?.name,
+        rank: apiPlayer.ranking,
+        country: apiPlayer.team?.country?.alpha2 || apiPlayer.team?.country?.name,
+        age: null, // Not provided by rankings API
+        points: 0, // Game points (will be calculated later)
+        atpPoints: apiPlayer.points,
+        gender: apiPlayer.team?.gender, // 'M' or 'F'
+      }));
+
+    console.log(`  After gender filter: ${players.length} players`);
+    console.log(`  First transformed:`, players[0]);
+
+    return players;
   } catch (error) {
     console.error('Error fetching top players:', error);
+    console.error('Error details:', error.response?.data);
     throw error;
   }
 };

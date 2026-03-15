@@ -4,7 +4,7 @@ import { mockPlayers } from '../utils/mockData';
 import { calculatePlayerPrice, calculateRecentForm } from '../utils/pricing';
 
 // Add a flag to switch between mock and real data
-const USE_MOCK_DATA = true; // Set to false when ready to use real API
+const USE_MOCK_DATA = false; // Set to false when ready to use real API
 
 export const fetchPlayers = createAsyncThunk(
   'players/fetchPlayers',
@@ -32,42 +32,42 @@ export const fetchPlayers = createAsyncThunk(
       return playersWithPrices;
     }
     
-    // Real API logic (keep for later)
+    // Real API logic
+    console.log('🚀 Fetching real players from API...');
     const topPlayers = await getTopPlayers();
+
+    console.log('📥 Received players:', topPlayers?.length || 0);
+
+    if (!topPlayers || topPlayers.length === 0) {
+      console.error('❌ No players returned from API');
+      throw new Error('No players available from API');
+    }
+
     const availablePlayers = topPlayers.filter(
       player => !eliminatedPlayerIds.includes(player.id)
     );
-    
-    const playersWithPrices = await Promise.all(
-      availablePlayers.map(async (player) => {
-        try {
-          const matchHistory = await getPlayerMatchHistory(player.id);
-          const recentForm = calculateRecentForm(matchHistory);
-          
-          const price = calculatePlayerPrice(
-            { ...player, recentForm },
-            availablePlayers,
-            roundBudget
-          );
-          
-          return {
-            ...player,
-            recentForm,
-            price,
-            points: 0,
-            upsetBonus: 0,
-          };
-        } catch (error) {
-          console.error(`Error processing player ${player.id}:`, error);
-          return {
-            ...player,
-            price: calculatePlayerPrice(player, availablePlayers, roundBudget),
-            points: 0,
-          };
-        }
-      })
-    );
-    
+
+    console.log('📊 Available players after filtering:', availablePlayers.length);
+
+    // Calculate prices for each player (skip match history for now - it's slow)
+    const playersWithPrices = availablePlayers.map(player => {
+      const price = calculatePlayerPrice(
+        player,
+        availablePlayers,
+        roundBudget
+      );
+
+      return {
+        ...player,
+        price,
+        points: 0,
+        upsetBonus: 0,
+        recentForm: null, // Will add later when we implement match history
+      };
+    });
+
+    console.log('✅ Players with prices calculated:', playersWithPrices.length);
+
     return playersWithPrices;
   }
 );
