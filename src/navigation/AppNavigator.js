@@ -1,11 +1,11 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
 import { Text } from 'react-native';
+import { COLORS } from '../constants/theme';
 import HomeScreen from '../screens/HomeScreen';
 import SquadScreen from '../screens/SquadScreen';
+import TestControlsScreen from '../screens/TestControlsScreen';
 import TournamentScreen from '../screens/TournamentScreen';
-import { COLORS } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -51,6 +51,14 @@ function AppNavigator() {
           options={{
             tabBarLabel: 'Tournaments',
             tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏆</Text>,
+          }}
+        />
+        <Tab.Screen
+          name="Test"
+          component={TestControlsScreen}
+          options={{
+            tabBarLabel: 'Test',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🧪</Text>,
           }}
         />
       </Tab.Navigator>

@@ -4,20 +4,17 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: SPORTS_API_BASE_URL,
   headers: {
-    'Authorization': `Bearer ${SPORTS_API_KEY}`,
+    'x-api-key': SPORTS_API_KEY,
     'Content-Type': 'application/json',
   },
 });
 
 // Get top ATP players with rankings
-export const getTopPlayers = async () => {
+export const getTopPlayers = async (gender = 'male') => {
   try {
-    const response = await api.get('/athletes/top', {
-      params: {
-        sport: 'tennis',
-        gender: 'male', // or 'female' for WTA
-      }
-    });
+    // V2 API uses /api/rankings for ATP Singles, /api/rankings/wta for WTA
+    const endpoint = gender === 'female' ? '/api/rankings/wta' : '/api/rankings';
+    const response = await api.get(endpoint);
     return response.data;
   } catch (error) {
     console.error('Error fetching top players:', error);
@@ -26,9 +23,10 @@ export const getTopPlayers = async () => {
 };
 
 // Get player details including recent form
-export const getPlayerDetails = async (playerId) => {
+// Note: Use Team ID from rankings response
+export const getPlayerDetails = async (teamId) => {
   try {
-    const response = await api.get(`/athletes/${playerId}`);
+    const response = await api.get(`/api/teams/${teamId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching player details:', error);
@@ -37,13 +35,11 @@ export const getPlayerDetails = async (playerId) => {
 };
 
 // Get player match history for form calculation
-export const getPlayerMatchHistory = async (playerId) => {
+// NOTE: V2 endpoint needs verification - may be /api/teams/{teamId}/events or similar
+export const getPlayerMatchHistory = async (teamId) => {
   try {
-    const response = await api.get(`/athletes/games`, {
-      params: {
-        id: playerId,
-      }
-    });
+    // TODO: Verify correct V2 endpoint for player match history
+    const response = await api.get(`/api/teams/${teamId}/events`);
     return response.data;
   } catch (error) {
     console.error('Error fetching player match history:', error);
@@ -54,7 +50,7 @@ export const getPlayerMatchHistory = async (playerId) => {
 // Get current tournament matches
 export const getLiveMatches = async () => {
   try {
-    const response = await api.get('/games/current');
+    const response = await api.get('/api/live');
     return response.data;
   } catch (error) {
     console.error('Error fetching live matches:', error);
@@ -63,13 +59,14 @@ export const getLiveMatches = async () => {
 };
 
 // Get completed matches
-export const getCompletedMatches = async (tournamentId) => {
+// NOTE: V2 uses tournament-specific endpoints
+// Use: /api/tournament/{id}/season/{sid}/events/last/{page}
+export const getCompletedMatches = async (tournamentId, seasonId, page = 0) => {
   try {
-    const response = await api.get('/games/results', {
-      params: {
-        competition_id: tournamentId,
-      }
-    });
+    if (!tournamentId || !seasonId) {
+      throw new Error('Tournament ID and Season ID are required for V2 API');
+    }
+    const response = await api.get(`/api/tournament/${tournamentId}/season/${seasonId}/events/last/${page}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching completed matches:', error);
@@ -80,11 +77,7 @@ export const getCompletedMatches = async (tournamentId) => {
 // Get match statistics
 export const getMatchStatistics = async (matchId) => {
   try {
-    const response = await api.get('/games/state', {
-      params: {
-        id: matchId,
-      }
-    });
+    const response = await api.get(`/api/match/${matchId}/statistics`);
     return response.data;
   } catch (error) {
     console.error('Error fetching match statistics:', error);
@@ -95,11 +88,7 @@ export const getMatchStatistics = async (matchId) => {
 // Get tournament/competition details
 export const getTournaments = async () => {
   try {
-    const response = await api.get('/competitions', {
-      params: {
-        sport: 'tennis',
-      }
-    });
+    const response = await api.get('/api/live-tournaments');
     return response.data;
   } catch (error) {
     console.error('Error fetching tournaments:', error);
@@ -107,18 +96,141 @@ export const getTournaments = async () => {
   }
 };
 
-// Get ATP rankings
-export const getRankings = async () => {
+// Get ATP rankings (same as getTopPlayers)
+export const getRankings = async (gender = 'male') => {
   try {
-    const response = await api.get('/standings', {
-      params: {
-        sport: 'tennis',
-        gender: 'male',
-      }
-    });
+    const endpoint = gender === 'female' ? '/api/rankings/wta' : '/api/rankings';
+    const response = await api.get(endpoint);
     return response.data;
   } catch (error) {
     console.error('Error fetching rankings:', error);
+    throw error;
+  }
+};
+
+// ===== NEW V2 ENDPOINTS =====
+
+// Get today's matches
+export const getTodaysMatches = async () => {
+  try {
+    const response = await api.get('/api/today');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching today\'s matches:', error);
+    throw error;
+  }
+};
+
+// Get schedule by specific date
+export const getScheduleByDate = async (date) => {
+  try {
+    // date format: YYYY-MM-DD
+    const response = await api.get(`/api/schedule/${date}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching schedule:', error);
+    throw error;
+  }
+};
+
+// Get trending players
+export const getTrendingPlayers = async () => {
+  try {
+    const response = await api.get('/api/trending-players');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trending players:', error);
+    throw error;
+  }
+};
+
+// Get full match details
+export const getMatchDetails = async (matchId) => {
+  try {
+    const response = await api.get(`/api/match/${matchId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching match details:', error);
+    throw error;
+  }
+};
+
+// Get match scores
+export const getMatchScores = async (matchId) => {
+  try {
+    const response = await api.get(`/api/match/${matchId}/scores`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching match scores:', error);
+    throw error;
+  }
+};
+
+// Get head-to-head between two players
+export const getHeadToHead = async (matchId) => {
+  try {
+    const response = await api.get(`/api/match/${matchId}/h2h`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching head-to-head:', error);
+    throw error;
+  }
+};
+
+// Get player pre-game form
+export const getPreGameForm = async (matchId) => {
+  try {
+    const response = await api.get(`/api/match/${matchId}/pregame-form`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching pre-game form:', error);
+    throw error;
+  }
+};
+
+// Get ATP Doubles rankings
+export const getDoublesRankings = async (gender = 'male') => {
+  try {
+    const endpoint = gender === 'female' ? '/api/rankings/wta-doubles' : '/api/rankings/doubles';
+    const response = await api.get(endpoint);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching doubles rankings:', error);
+    throw error;
+  }
+};
+
+// Search for players/tournaments
+export const search = async (query) => {
+  try {
+    const response = await api.get('/api/search', {
+      params: { q: query }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching:', error);
+    throw error;
+  }
+};
+
+// Get tournament information
+export const getTournamentInfo = async (tournamentId) => {
+  try {
+    const response = await api.get(`/api/tournament/${tournamentId}/info`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching tournament info:', error);
+    throw error;
+  }
+};
+
+// Get tournament seasons (needed for season-specific calls)
+export const getTournamentSeasons = async (tournamentId) => {
+  try {
+    const response = await api.get(`/api/tournament/${tournamentId}/seasons`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching tournament seasons:', error);
     throw error;
   }
 };

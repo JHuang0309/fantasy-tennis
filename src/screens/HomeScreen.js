@@ -1,43 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
   ActivityIndicator,
-  TextInput,
+  FlatList,
   SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import PlayerCard from '../components/PlayerCard';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
 import { fetchPlayers } from '../store/playersSlice';
 import { addPlayerToSquad, removePlayerFromSquad } from '../store/squadSlice';
-import PlayerCard from '../components/PlayerCard';
-import { COLORS, SIZES, FONTS, BUDGET } from '../constants/theme';
+import { formatPrice, getRequiredSquadSize, getRoundBudget } from '../utils/pricing';
 
 const HomeScreen = () => {
   const dispatch = useDispatch();
-  const { list: players, loading } = useSelector((state) => state.players);
-  const { players: squadPlayers, totalSpent } = useSelector((state) => state.squad);
+  const { list: players, loading, eliminated } = useSelector((state) => state.players);
+  const { players: squadPlayers, totalSpent, currentRound } = useSelector((state) => state.squad);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const roundBudget = getRoundBudget(currentRound);
+  const requiredSquadSize = getRequiredSquadSize(currentRound);
+
   useEffect(() => {
-    // For now, using mock data. Replace with: dispatch(fetchPlayers());
-    // Mock data for testing
-    const mockPlayers = [
-      { id: 1, name: 'Novak Djokovic', rank: 1, country: 'Serbia', price: 10000000, points: 0 },
-      { id: 2, name: 'Carlos Alcaraz', rank: 2, country: 'Spain', price: 9500000, points: 0 },
-      { id: 3, name: 'Daniil Medvedev', rank: 3, country: 'Russia', price: 8500000, points: 0 },
-      { id: 4, name: 'Jannik Sinner', rank: 4, country: 'Italy', price: 8000000, points: 0 },
-      { id: 5, name: 'Andrey Rublev', rank: 5, country: 'Russia', price: 7000000, points: 0 },
-      { id: 6, name: 'Stefanos Tsitsipas', rank: 6, country: 'Greece', price: 6500000, points: 0 },
-      { id: 7, name: 'Holger Rune', rank: 7, country: 'Denmark', price: 6000000, points: 0 },
-      { id: 8, name: 'Casper Ruud', rank: 8, country: 'Norway', price: 5500000, points: 0 },
-    ];
-    // Simulate API call
-    setTimeout(() => {
-      dispatch({ type: 'players/fetchPlayers/fulfilled', payload: mockPlayers });
-    }, 500);
-  }, [dispatch]);
+    dispatch(fetchPlayers({ 
+      roundBudget, 
+      eliminatedPlayerIds: eliminated 
+    }));
+  }, [dispatch, currentRound, eliminated]);
 
   const filteredPlayers = players.filter((player) =>
     player.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -51,27 +43,49 @@ const HomeScreen = () => {
     if (isPlayerInSquad(player.id)) {
       dispatch(removePlayerFromSquad(player.id));
     } else {
+      // Check if squad is full
+      if (squadPlayers.length >= requiredSquadSize) {
+        alert(`Squad is full! Maximum ${requiredSquadSize} players for Round ${currentRound}`);
+        return;
+      }
       dispatch(addPlayerToSquad(player));
     }
   };
 
-  const formatBudget = (amount) => {
-    return `$${(amount / 1000000).toFixed(1)}M`;
-  };
-
-  const remainingBudget = BUDGET.initial - totalSpent;
+  const remainingBudget = roundBudget - totalSpent;
+  const canAffordAnyPlayer = players.some(p => 
+    !isPlayerInSquad(p.id) && p.price <= remainingBudget
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Select Players</Text>
-        <View style={styles.budgetContainer}>
-          <Text style={styles.budgetLabel}>Remaining Budget:</Text>
-          <Text style={styles.budgetAmount}>{formatBudget(remainingBudget)}</Text>
+        <Text style={styles.title}>Round {currentRound} - Select Players</Text>
+        
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Budget</Text>
+            <Text style={styles.statValue}>{formatPrice(roundBudget)}</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Remaining</Text>
+            <Text style={[styles.statValue, { color: canAffordAnyPlayer ? COLORS.success : COLORS.error }]}>
+              {formatPrice(remainingBudget)}
+            </Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Squad</Text>
+            <Text style={styles.statValue}>
+              {squadPlayers.length}/{requiredSquadSize}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.squadCount}>
-          Squad: {squadPlayers.length} players
-        </Text>
+
+        {squadPlayers.length === requiredSquadSize && (
+          <View style={styles.completeBox}>
+            <Text style={styles.completeText}>✓ Squad Complete!</Text>
+          </View>
+        )}
       </View>
 
       <TextInput
@@ -85,6 +99,7 @@ const HomeScreen = () => {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Calculating player prices...</Text>
         </View>
       ) : (
         <FlatList
@@ -95,10 +110,16 @@ const HomeScreen = () => {
               player={item}
               onPress={() => handlePlayerPress(item)}
               isSelected={isPlayerInSquad(item.id)}
+              canAfford={item.price <= remainingBudget || isPlayerInSquad(item.id)}
             />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No players available</Text>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -120,26 +141,37 @@ const styles = StyleSheet.create({
     fontSize: FONTS.size.xxlarge,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: SIZES.small,
+    marginBottom: SIZES.medium,
   },
-  budgetContainer: {
+  statsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statBox: {
+    flex: 1,
     alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: FONTS.size.small,
+    color: COLORS.textLight,
     marginBottom: 4,
   },
-  budgetLabel: {
+  statValue: {
     fontSize: FONTS.size.medium,
-    color: COLORS.textLight,
-    marginRight: SIZES.small,
-  },
-  budgetAmount: {
-    fontSize: FONTS.size.large,
     fontWeight: 'bold',
     color: COLORS.primary,
   },
-  squadCount: {
-    fontSize: FONTS.size.small,
-    color: COLORS.textLight,
+  completeBox: {
+    marginTop: SIZES.medium,
+    padding: SIZES.small,
+    backgroundColor: COLORS.success,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  completeText: {
+    color: COLORS.card,
+    fontSize: FONTS.size.medium,
+    fontWeight: 'bold',
   },
   searchInput: {
     margin: SIZES.medium,
@@ -158,6 +190,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: SIZES.medium,
+    color: COLORS.textLight,
+    fontSize: FONTS.size.medium,
+  },
+  emptyContainer: {
+    padding: SIZES.xlarge,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: FONTS.size.large,
+    color: COLORS.textLight,
   },
 });
 

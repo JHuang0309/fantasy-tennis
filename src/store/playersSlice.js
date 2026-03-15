@@ -1,26 +1,49 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getPlayerMatchHistory, getTopPlayers } from '../api/sportsApi';
+import { mockPlayers } from '../utils/mockData';
 import { calculatePlayerPrice, calculateRecentForm } from '../utils/pricing';
+
+// Add a flag to switch between mock and real data
+const USE_MOCK_DATA = true; // Set to false when ready to use real API
 
 export const fetchPlayers = createAsyncThunk(
   'players/fetchPlayers',
   async ({ roundBudget, eliminatedPlayerIds = [] }) => {
-    const topPlayers = await getTopPlayers();
+    if (USE_MOCK_DATA) {
+      // Use mock data for testing
+      const availablePlayers = mockPlayers.filter(
+        player => !eliminatedPlayerIds.includes(player.id)
+      );
+      
+      const playersWithPrices = availablePlayers.map(player => {
+        const price = calculatePlayerPrice(
+          player,
+          availablePlayers,
+          roundBudget
+        );
+        
+        return {
+          ...player,
+          price,
+          upsetBonus: 0,
+        };
+      });
+      
+      return playersWithPrices;
+    }
     
-    // Filter out eliminated players
+    // Real API logic (keep for later)
+    const topPlayers = await getTopPlayers();
     const availablePlayers = topPlayers.filter(
       player => !eliminatedPlayerIds.includes(player.id)
     );
     
-    // Fetch additional details and calculate prices
     const playersWithPrices = await Promise.all(
       availablePlayers.map(async (player) => {
         try {
-          // Get match history for form calculation
           const matchHistory = await getPlayerMatchHistory(player.id);
           const recentForm = calculateRecentForm(matchHistory);
           
-          // Calculate price
           const price = calculatePlayerPrice(
             { ...player, recentForm },
             availablePlayers,

@@ -1,33 +1,57 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { COLORS, SIZES, FONTS } from '../constants/theme';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
+import { formatPrice } from '../utils/pricing';
 
-const PlayerCard = ({ player, onPress, isSelected }) => {
-  const formatPrice = (price) => {
-    return `$${(price / 1000000).toFixed(1)}M`;
+const PlayerCard = ({ player, onPress, isSelected, canAfford = true }) => {
+  const getTierColor = (rank) => {
+    if (rank <= 3) return '#FFD700'; // Gold
+    if (rank <= 10) return '#C0C0C0'; // Silver
+    if (rank <= 32) return '#CD7F32'; // Bronze
+    return COLORS.textLight;
   };
+
+  const tierColor = getTierColor(player.rank);
 
   return (
     <TouchableOpacity
-      style={[styles.card, isSelected && styles.cardSelected]}
+      style={[
+        styles.card,
+        isSelected && styles.cardSelected,
+        !canAfford && styles.cardDisabled,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
+      disabled={!canAfford && !isSelected}
     >
       <View style={styles.playerInfo}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, { backgroundColor: tierColor }]}>
           <Text style={styles.avatarText}>
             {player.name.split(' ').map(n => n[0]).join('')}
           </Text>
         </View>
         <View style={styles.details}>
           <Text style={styles.name}>{player.name}</Text>
-          <Text style={styles.rank}>Rank: {player.rank}</Text>
-          <Text style={styles.country}>{player.country}</Text>
+          <Text style={styles.rank}>Rank #{player.rank} • {player.country}</Text>
+          {player.recentForm && (
+            <Text style={styles.form}>
+              Form: {player.recentForm.wins}W-{player.recentForm.losses}L 
+              ({Math.round(player.recentForm.winRate * 100)}%)
+            </Text>
+          )}
         </View>
       </View>
       <View style={styles.priceContainer}>
-        <Text style={styles.price}>{formatPrice(player.price)}</Text>
-        <Text style={styles.points}>{player.points || 0} pts</Text>
+        <Text style={[styles.price, !canAfford && styles.priceDisabled]}>
+          {formatPrice(player.price)}
+        </Text>
+        {player.points > 0 && (
+          <Text style={styles.points}>{player.points} pts</Text>
+        )}
+        {player.upsetBonus > 0 && (
+          <View style={styles.bonusBadge}>
+            <Text style={styles.bonusText}>🔥 +{Math.round(player.upsetBonus * 100)}%</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -54,6 +78,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     backgroundColor: '#eff6ff',
   },
+  cardDisabled: {
+    opacity: 0.5,
+  },
   playerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -63,7 +90,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SIZES.medium,
@@ -87,9 +113,10 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginBottom: 2,
   },
-  country: {
+  form: {
     fontSize: FONTS.size.small,
-    color: COLORS.textLight,
+    color: COLORS.success,
+    fontWeight: '600',
   },
   priceContainer: {
     alignItems: 'flex-end',
@@ -100,9 +127,24 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginBottom: 4,
   },
+  priceDisabled: {
+    color: COLORS.error,
+  },
   points: {
     fontSize: FONTS.size.small,
     color: COLORS.success,
+  },
+  bonusBadge: {
+    backgroundColor: COLORS.warning,
+    paddingHorizontal: SIZES.small,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  bonusText: {
+    fontSize: FONTS.size.small,
+    color: COLORS.card,
+    fontWeight: 'bold',
   },
 });
 
